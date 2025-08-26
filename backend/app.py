@@ -52,6 +52,40 @@ def send_to_telegram(payload: dict):
     ok = r.ok
     return ok, (r.text if not ok else "ok")
 
+def _normalize_db_url(url: str) -> str:
+    return url.replace("postgres://", "postgresql://", 1) if url and url.startswith("postgres://") else url
+
+DATABASE_URL = _normalize_db_url(os.getenv("DATABASE_URL", ""))
+ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "change-me")
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*")
+
+# IMPORTANT: static papka — bu yerga React build ko'chiriladi
+app = Flask(__name__, static_folder="static", static_url_path="")
+origins = [o.strip() for o in CORS_ORIGINS.split(",")] if CORS_ORIGINS != "*" else "*"
+CORS(app, resources={r"/api/*": {"origins": origins}}, supports_credentials=False)
+
+# ==== DB ====
+if not DATABASE_URL:
+    DATABASE_URL = "sqlite:///./data.db"
+
+engine = create_engine(DATABASE_URL, future=True)
+SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
+Base = declarative_base()
+
+class SurveyResponse(Base):
+    __tablename__ = "survey_responses"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    data = Column(JSONB().with_variant(SA_JSON, "sqlite"), nullable=False)
+    ua = Column(Text, nullable=True)
+    lang = Column(Text, nullable=True)
+
+Base.metadata.create_all(engine)
+
+def require_admin(req: request) -> bool:
+    token = req.headers.get("X-Admin-Token") or req.args.get("token")
+    return token == ADMIN_TOKEN
+
 
 @app.get("/api/test-telegram")
 def test_tg():
@@ -88,40 +122,6 @@ def create_response():
         "id": sr_id,
         "detail": None if sent else detail
     })
-
-def _normalize_db_url(url: str) -> str:
-    return url.replace("postgres://", "postgresql://", 1) if url and url.startswith("postgres://") else url
-
-DATABASE_URL = _normalize_db_url(os.getenv("DATABASE_URL", ""))
-ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "change-me")
-CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*")
-
-# IMPORTANT: static papka — bu yerga React build ko'chiriladi
-app = Flask(__name__, static_folder="static", static_url_path="")
-origins = [o.strip() for o in CORS_ORIGINS.split(",")] if CORS_ORIGINS != "*" else "*"
-CORS(app, resources={r"/api/*": {"origins": origins}}, supports_credentials=False)
-
-# ==== DB ====
-if not DATABASE_URL:
-    DATABASE_URL = "sqlite:///./data.db"
-
-engine = create_engine(DATABASE_URL, future=True)
-SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
-Base = declarative_base()
-
-class SurveyResponse(Base):
-    __tablename__ = "survey_responses"
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
-    data = Column(JSONB().with_variant(SA_JSON, "sqlite"), nullable=False)
-    ua = Column(Text, nullable=True)
-    lang = Column(Text, nullable=True)
-
-Base.metadata.create_all(engine)
-
-def require_admin(req: request) -> bool:
-    token = req.headers.get("X-Admin-Token") or req.args.get("token")
-    return token == ADMIN_TOKEN
 
 # ==== API ====
 @app.get("/api/health")
