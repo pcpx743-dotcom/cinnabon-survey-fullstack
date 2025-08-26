@@ -136,10 +136,11 @@ export default function App() {
   }
 
   useEffect(() => {
-    if (showAdmin && adminUnlocked) {
-      loadAdmin();
+    // bitta linkdan /admin ochilsa – admin modal chiqsin
+    if (window.location.pathname === "/admin") {
+      setShowAdmin(true);
     }
-  }, [showAdmin, adminUnlocked]);
+  }, []);
 
   const gradientBg = {
     background: `radial-gradient(1200px 800px at -10% -20%, ${palette.teal}20 0%, transparent 60%), 

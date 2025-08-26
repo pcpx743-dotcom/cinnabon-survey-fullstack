@@ -8,6 +8,8 @@ from sqlalchemy import create_engine, Column, Integer, DateTime, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.types import JSON as SA_JSON
 from sqlalchemy.orm import sessionmaker, declarative_base
+import os
+from flask import send_from_directory, redirect
 
 def _normalize_db_url(url: str) -> str:
     # Render can provide postgres:// — SQLAlchemy prefers postgresql://
@@ -19,7 +21,7 @@ DATABASE_URL = _normalize_db_url(os.getenv("DATABASE_URL", ""))
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "change-me")
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*")  # comma-separated or *
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder="static", static_url_path="")
 
 # CORS
 origins = [o.strip() for o in CORS_ORIGINS.split(",")] if CORS_ORIGINS != "*" else "*"
@@ -48,6 +50,20 @@ Base.metadata.create_all(engine)
 def require_admin(req: request) -> bool:
     token = req.headers.get("X-Admin-Token") or req.args.get("token")
     return token == ADMIN_TOKEN
+
+@app.get("/")
+def index():
+    # index.html ni qaytaradi
+    return send_from_directory(app.static_folder, "index.html")
+
+@app.get("/admin")
+@app.get("/<path:path>")
+def spa_fallback(path=None):
+    # Agar so‘ralgan resurs static papkada bo‘lsa — o‘shani beramiz
+    if path and os.path.exists(os.path.join(app.static_folder, path)):
+        return send_from_directory(app.static_folder, path)
+    # Aks holda SPA index.html
+    return send_from_directory(app.static_folder, "index.html")
 
 @app.get("/api/health")
 def health():
