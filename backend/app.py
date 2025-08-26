@@ -3,8 +3,8 @@ from datetime import datetime, timezone
 from flask import Flask, request, jsonify, Response, send_from_directory
 from flask_cors import CORS
 
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
+TELEGRAM_BOT_TOKEN = "8455780573:AAE9ocfjP9aQwSqT95_K9N_uiHYTqW-Cdqc"
+TELEGRAM_CHAT_ID = "-4973096088"
 SAVE_TO_DB = os.getenv("SAVE_TO_DB", "false").lower() == "true"
 
 # SPA: React build shu papkada bo'ladi
